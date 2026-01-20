@@ -548,6 +548,7 @@ fun AnimatedVisibilityScope.GalleryListScreen(
                     info = info,
                     showPages = showPages,
                     showProgress = showProgress,
+                    showTitle = listMode == 2,
                 )
             },
             searchBarOffsetY = { searchBarOffsetY },

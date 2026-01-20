@@ -278,6 +278,7 @@ fun AnimatedVisibilityScope.FavouritesScreen(navigator: DestinationsNavigator, v
                         showPages = showPages,
                         showProgress = showProgress,
                         showFavoriteStatus = false,
+                        showTitle = listMode == 2,
                         interactionSource = interactionSource,
                     )
                 }

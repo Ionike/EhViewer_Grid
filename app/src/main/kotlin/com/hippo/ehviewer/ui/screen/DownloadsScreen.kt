@@ -598,6 +598,7 @@ fun AnimatedVisibilityScope.DownloadsScreen(navigator: DestinationsNavigator) = 
                             modifier = Modifier.thenIf(animateItems) { animateItem() },
                             showLanguage = false,
                             showProgress = showProgress,
+                            showTitle = true,
                         )
                     }
                 }

@@ -161,6 +161,7 @@ fun GalleryInfoGridItem(
     showPages: Boolean = true,
     showProgress: Boolean = true,
     showFavoriteStatus: Boolean = true,
+    showTitle: Boolean = false,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
 ) = ElevatedCard(
     modifier = modifier,
@@ -168,59 +169,70 @@ fun GalleryInfoGridItem(
     onLongClick = onLongClick,
     interactionSource = interactionSource,
 ) {
-    Box {
-        with(listThumbGenerator) {
-            SharedElementBox(key = "${info.gid}", shape = ShapeDefaults.Medium) {
-                var ratio by remember(info) {
-                    val ratio = if (info.thumbHeight != 0) {
-                        (info.thumbWidth.toFloat() / info.thumbHeight).coerceIn(MIN_RATIO, MAX_RATIO)
-                    } else {
-                        DEFAULT_RATIO
+    Column {
+        Box {
+            with(listThumbGenerator) {
+                SharedElementBox(key = "${info.gid}", shape = ShapeDefaults.Medium) {
+                    var ratio by remember(info) {
+                        val ratio = if (info.thumbHeight != 0) {
+                            (info.thumbWidth.toFloat() / info.thumbHeight).coerceIn(MIN_RATIO, MAX_RATIO)
+                        } else {
+                            DEFAULT_RATIO
+                        }
+                        mutableFloatStateOf(ratio)
                     }
-                    mutableFloatStateOf(ratio)
+                    AsyncImage(
+                        model = requestOf(info),
+                        contentDescription = null,
+                        modifier = Modifier.aspectRatio(ratio),
+                        onSuccess = {
+                            ratio = (it.result.image.width.toFloat() / it.result.image.height).coerceIn(MIN_RATIO, MAX_RATIO)
+                        },
+                    )
                 }
-                AsyncImage(
-                    model = requestOf(info),
-                    contentDescription = null,
-                    modifier = Modifier.aspectRatio(ratio),
-                    onSuccess = {
-                        ratio = (it.result.image.width.toFloat() / it.result.image.height).coerceIn(MIN_RATIO, MAX_RATIO)
-                    },
-                )
             }
-        }
-        val categoryColor = EhUtils.getCategoryColor(info.category)
-        Badge(
-            modifier = Modifier.align(Alignment.TopEnd).widthIn(min = 32.dp).height(24.dp),
-            containerColor = categoryColor,
-            contentColor = EhUtils.getCategoryTextColor(categoryColor),
-        ) {
-            val shouldShowLanguage = showLanguage && info.simpleLanguage != null
-            if (showPages && info.pages > 0) {
-                val readProgress = if (showProgress) {
-                    remember { EhDB.getReadProgressFlow(info.gid) }.collectAsState(0).value
-                } else {
-                    0
+            val categoryColor = EhUtils.getCategoryColor(info.category)
+            Badge(
+                modifier = Modifier.align(Alignment.TopEnd).widthIn(min = 32.dp).height(24.dp),
+                containerColor = categoryColor,
+                contentColor = EhUtils.getCategoryTextColor(categoryColor),
+            ) {
+                val shouldShowLanguage = showLanguage && info.simpleLanguage != null
+                if (showPages && info.pages > 0) {
+                    val readProgress = if (showProgress) {
+                        remember { EhDB.getReadProgressFlow(info.gid) }.collectAsState(0).value
+                    } else {
+                        0
+                    }
+                    Text(text = if (readProgress > 0) "${readProgress + 1}/${info.pages}" else "${info.pages}")
+                    if (shouldShowLanguage) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                    }
                 }
-                Text(text = if (readProgress > 0) "${readProgress + 1}/${info.pages}" else "${info.pages}")
                 if (shouldShowLanguage) {
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(text = info.simpleLanguage.orEmpty())
                 }
             }
-            if (shouldShowLanguage) {
-                Text(text = info.simpleLanguage.orEmpty())
+            if (showFavoriteStatus) {
+                val isFavorited by FavouriteStatusRouter.collectAsState(info) { it != NOT_FAVORITED }
+                if (isFavorited) {
+                    Icon(
+                        imageVector = Icons.Default.Favorite,
+                        contentDescription = null,
+                        modifier = Modifier.align(Alignment.BottomEnd).padding(2.dp),
+                        tint = EhUtils.favoriteIconColor,
+                    )
+                }
             }
         }
-        if (showFavoriteStatus) {
-            val isFavorited by FavouriteStatusRouter.collectAsState(info) { it != NOT_FAVORITED }
-            if (isFavorited) {
-                Icon(
-                    imageVector = Icons.Default.Favorite,
-                    contentDescription = null,
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(2.dp),
-                    tint = EhUtils.favoriteIconColor,
-                )
-            }
+        if (showTitle) {
+            Text(
+                text = EhUtils.getSuitableTitle(info),
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(4.dp),
+            )
         }
     }
 }
