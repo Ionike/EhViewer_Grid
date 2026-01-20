@@ -21,11 +21,12 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
-import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
@@ -92,7 +93,7 @@ import com.ehviewer.core.model.TagNamespace
 import com.ehviewer.core.ui.component.FAB_ANIMATE_TIME
 import com.ehviewer.core.ui.component.FabLayout
 import com.ehviewer.core.ui.component.FastScrollLazyColumn
-import com.ehviewer.core.ui.component.FastScrollLazyVerticalStaggeredGrid
+import com.ehviewer.core.ui.component.FastScrollLazyVerticalGrid
 import com.ehviewer.core.ui.component.LocalSideSheetState
 import com.ehviewer.core.ui.component.ProvideSideSheetContent
 import com.ehviewer.core.ui.icons.EhIcons
@@ -114,6 +115,7 @@ import com.hippo.ehviewer.EhDB
 import com.hippo.ehviewer.Settings
 import com.hippo.ehviewer.asMutableState
 import com.hippo.ehviewer.client.EhTagDatabase
+import com.hippo.ehviewer.client.EhUtils.isExHentai
 import com.hippo.ehviewer.collectAsState
 import com.hippo.ehviewer.download.DownloadManager
 import com.hippo.ehviewer.download.DownloadService
@@ -583,14 +585,21 @@ fun AnimatedVisibilityScope.DownloadsScreen(navigator: DestinationsNavigator) = 
             if (showGridView) {
                 val gridInterval = dimensionResource(com.hippo.ehviewer.R.dimen.gallery_grid_interval)
                 val thumbColumns by Settings.thumbColumns.collectAsState()
-                FastScrollLazyVerticalStaggeredGrid(
-                    columns = StaggeredGridCells.Fixed(thumbColumns),
+                FastScrollLazyVerticalGrid(
+                    columns = GridCells.Fixed(maxOf(2, thumbColumns)),
                     modifier = Modifier.nestedScroll(searchBarConnection).fillMaxSize(),
                     contentPadding = realPadding,
-                    verticalItemSpacing = gridInterval,
+                    verticalArrangement = Arrangement.spacedBy(gridInterval),
                     horizontalArrangement = Arrangement.spacedBy(gridInterval),
                 ) {
-                    items(list, key = { it.gid }) { info ->
+                    items(
+                        items = list,
+                        key = { it.gid },
+                        span = { info ->
+                            val isHorizontal = info.thumbWidth > info.thumbHeight
+                            if (isHorizontal) GridItemSpan(2) else GridItemSpan(1)
+                        }
+                    ) { info ->
                         GalleryInfoGridItem(
                             onClick = ::onItemClick.partially1(info),
                             onLongClick = { navigate(info.galleryInfo.asDst()) },
@@ -599,6 +608,14 @@ fun AnimatedVisibilityScope.DownloadsScreen(navigator: DestinationsNavigator) = 
                             showLanguage = false,
                             showProgress = showProgress,
                             showTitle = true,
+                            onImageLoaded = { width, height ->
+                                if (info.thumbWidth == 0 || info.thumbHeight == 0) {
+                                    info.thumbWidth = width
+                                    info.thumbHeight = height
+                                    launchIO { EhDB.putDownloadInfo(info) }
+                                    invalidateKey = !invalidateKey
+                                }
+                            }
                         )
                     }
                 }

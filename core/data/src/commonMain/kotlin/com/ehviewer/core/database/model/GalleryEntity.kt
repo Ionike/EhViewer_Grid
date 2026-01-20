@@ -50,6 +50,12 @@ class GalleryEntity(
 
     @ColumnInfo(name = "FAVORITE_SLOT")
     override var favoriteSlot: Int,
+
+    @ColumnInfo(name = "THUMB_WIDTH", defaultValue = "0")
+    override var thumbWidth: Int,
+
+    @ColumnInfo(name = "THUMB_HEIGHT", defaultValue = "0")
+    override var thumbHeight: Int,
 ) : BaseGalleryInfo() {
 
     @Ignore
@@ -57,12 +63,6 @@ class GalleryEntity(
 
     @Ignore
     override var rated: Boolean = false
-
-    @Ignore
-    override var thumbWidth: Int = 0
-
-    @Ignore
-    override var thumbHeight: Int = 0
 
     @Ignore
     override var favoriteName: String? = null

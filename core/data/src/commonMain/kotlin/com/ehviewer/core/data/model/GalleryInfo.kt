@@ -28,4 +28,6 @@ fun GalleryInfo.asEntity() = this as? GalleryEntity ?: GalleryEntity(
     pages = pages,
     simpleLanguage = simpleLanguage,
     favoriteSlot = favoriteSlot,
+    thumbWidth = thumbWidth,
+    thumbHeight = thumbHeight,
 )

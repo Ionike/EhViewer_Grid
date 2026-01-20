@@ -17,11 +17,6 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridItemScope
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridItemScope
-import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
-import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -53,7 +48,6 @@ import androidx.paging.compose.itemKey
 import com.ehviewer.core.i18n.R
 import com.ehviewer.core.model.BaseGalleryInfo
 import com.ehviewer.core.ui.component.FastScrollLazyVerticalGrid
-import com.ehviewer.core.ui.component.FastScrollLazyVerticalStaggeredGrid
 import com.ehviewer.core.ui.icons.EhIcons
 import com.ehviewer.core.ui.icons.big.SadAndroid
 import com.ehviewer.core.util.launch
@@ -78,8 +72,8 @@ fun GalleryList(
     listMode: Int,
     detailListState: LazyGridState = rememberLazyGridState(),
     detailItemContent: @Composable (LazyGridItemScope.(BaseGalleryInfo) -> Unit),
-    thumbListState: LazyStaggeredGridState = rememberLazyStaggeredGridState(),
-    thumbItemContent: @Composable (LazyStaggeredGridItemScope.(BaseGalleryInfo) -> Unit),
+    thumbListState: LazyGridState = rememberLazyGridState(),
+    thumbItemContent: @Composable (LazyGridItemScope.(BaseGalleryInfo) -> Unit),
     searchBarOffsetY: () -> Int,
     scrollToTopOnRefresh: Boolean = true,
     onRefresh: () -> Unit,
@@ -146,19 +140,25 @@ fun GalleryList(
             }
         } else {
             val gridInterval = dimensionResource(com.hippo.ehviewer.R.dimen.gallery_grid_interval)
-            val thumbColumns by Settings.thumbColumns.collectAsState()
-            FastScrollLazyVerticalStaggeredGrid(
-                columns = StaggeredGridCells.Fixed(thumbColumns),
+            val thumbColumnsState by Settings.thumbColumns.collectAsState()
+            val thumbColumns = maxOf(2, thumbColumnsState)
+            FastScrollLazyVerticalGrid(
+                columns = GridCells.Fixed(thumbColumns),
                 modifier = contentModifier.fillMaxSize(),
                 state = thumbListState,
                 contentPadding = contentPadding + PaddingValues(marginH, marginV),
-                verticalItemSpacing = gridInterval,
+                verticalArrangement = Arrangement.spacedBy(gridInterval),
                 horizontalArrangement = Arrangement.spacedBy(gridInterval),
             ) {
                 items(
                     count = data.itemCount,
                     key = data.itemKey(key = { item -> item.gid }),
                     contentType = data.itemContentType(),
+                    span = { index ->
+                        val info = data[index]
+                        val isHorizontal = info != null && info.thumbWidth > info.thumbHeight
+                        if (isHorizontal) GridItemSpan(2) else GridItemSpan(1)
+                    }
                 ) { index ->
                     val info = data[index]
                     if (info != null) {
@@ -167,7 +167,7 @@ fun GalleryList(
                     }
                 }
                 if (showLoadStateIndicator) {
-                    item(span = StaggeredGridItemSpan.FullLine) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
                         LoadStateIndicator(state = data.loadState.append) {
                             data.retry()
                         }

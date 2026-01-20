@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -163,6 +164,7 @@ fun GalleryInfoGridItem(
     showFavoriteStatus: Boolean = true,
     showTitle: Boolean = false,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    onImageLoaded: ((Int, Int) -> Unit)? = null,
 ) = ElevatedCard(
     modifier = modifier,
     onClick = onClick,
@@ -173,20 +175,16 @@ fun GalleryInfoGridItem(
         Box {
             with(listThumbGenerator) {
                 SharedElementBox(key = "${info.gid}", shape = ShapeDefaults.Medium) {
-                    var ratio by remember(info) {
-                        val ratio = if (info.thumbHeight != 0) {
-                            (info.thumbWidth.toFloat() / info.thumbHeight).coerceIn(MIN_RATIO, MAX_RATIO)
-                        } else {
-                            DEFAULT_RATIO
-                        }
-                        mutableFloatStateOf(ratio)
-                    }
+                    val isHorizontal = info.thumbWidth > info.thumbHeight
+                    val ratio = if (isHorizontal) 4f / 3f else 2f / 3f
                     AsyncImage(
                         model = requestOf(info),
                         contentDescription = null,
                         modifier = Modifier.aspectRatio(ratio),
-                        onSuccess = {
-                            ratio = (it.result.image.width.toFloat() / it.result.image.height).coerceIn(MIN_RATIO, MAX_RATIO)
+                        contentScale = ContentScale.Fit,
+                        onSuccess = { state ->
+                            val image = state.result.image
+                            onImageLoaded?.invoke(image.width, image.height)
                         },
                     )
                 }
