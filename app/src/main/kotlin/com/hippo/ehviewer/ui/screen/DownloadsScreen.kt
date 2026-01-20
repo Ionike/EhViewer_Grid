@@ -126,6 +126,7 @@ import com.hippo.ehviewer.ui.Screen
 import com.hippo.ehviewer.ui.confirmRemoveDownloadRange
 import com.hippo.ehviewer.ui.main.DownloadCard
 import com.hippo.ehviewer.ui.main.GalleryInfoGridItem
+import com.hippo.ehviewer.ui.main.reorderDense
 import com.hippo.ehviewer.ui.navToReader
 import com.hippo.ehviewer.ui.showMoveDownloadLabelList
 import com.hippo.ehviewer.ui.tools.DialogState
@@ -585,15 +586,27 @@ fun AnimatedVisibilityScope.DownloadsScreen(navigator: DestinationsNavigator) = 
             if (showGridView) {
                 val gridInterval = dimensionResource(com.hippo.ehviewer.R.dimen.gallery_grid_interval)
                 val thumbColumns by Settings.thumbColumns.collectAsState()
+                val realThumbColumns = maxOf(2, thumbColumns)
+
+                val denseList by remember(list, realThumbColumns) {
+                    derivedStateOf {
+                        val indices = reorderDense(list, realThumbColumns) { info ->
+                            val isHorizontal = info.thumbWidth > info.thumbHeight
+                            if (isHorizontal) 2 else 1
+                        }
+                        indices.map { list[it] }
+                    }
+                }
+
                 FastScrollLazyVerticalGrid(
-                    columns = GridCells.Fixed(maxOf(2, thumbColumns)),
+                    columns = GridCells.Fixed(realThumbColumns),
                     modifier = Modifier.nestedScroll(searchBarConnection).fillMaxSize(),
                     contentPadding = realPadding,
                     verticalArrangement = Arrangement.spacedBy(gridInterval),
                     horizontalArrangement = Arrangement.spacedBy(gridInterval),
                 ) {
                     items(
-                        items = list,
+                        items = denseList,
                         key = { it.gid },
                         span = { info ->
                             val isHorizontal = info.thumbWidth > info.thumbHeight

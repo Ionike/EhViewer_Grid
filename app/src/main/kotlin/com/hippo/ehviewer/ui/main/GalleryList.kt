@@ -28,6 +28,7 @@ import androidx.compose.material3.pulltorefresh.pullToRefresh
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -142,6 +143,20 @@ fun GalleryList(
             val gridInterval = dimensionResource(com.hippo.ehviewer.R.dimen.gallery_grid_interval)
             val thumbColumnsState by Settings.thumbColumns.collectAsState()
             val thumbColumns = maxOf(2, thumbColumnsState)
+
+            val snapshot = data.itemSnapshotList
+            val denseMapping by remember(snapshot, thumbColumns) {
+                derivedStateOf {
+                    val items = snapshot.items
+                    val indices = reorderDense(items, thumbColumns) { info ->
+                        val isHorizontal = info.thumbWidth > info.thumbHeight
+                        if (isHorizontal) 2 else 1
+                    }
+                    indices
+                }
+            }
+            val offset = snapshot.placeholdersBefore
+
             FastScrollLazyVerticalGrid(
                 columns = GridCells.Fixed(thumbColumns),
                 modifier = contentModifier.fillMaxSize(),
@@ -152,18 +167,36 @@ fun GalleryList(
             ) {
                 items(
                     count = data.itemCount,
-                    key = data.itemKey(key = { item -> item.gid }),
+                    key = { index ->
+                        val realIndex = if (index < offset || index >= offset + denseMapping.size) {
+                            index
+                        } else {
+                            offset + denseMapping[index - offset]
+                        }
+                        val item = data[realIndex]
+                        item?.gid ?: realIndex
+                    },
                     contentType = data.itemContentType(),
                     span = { index ->
-                        val info = data[index]
+                        val realIndex = if (index < offset || index >= offset + denseMapping.size) {
+                            index
+                        } else {
+                            offset + denseMapping[index - offset]
+                        }
+                        val info = data[realIndex]
                         val isHorizontal = info != null && info.thumbWidth > info.thumbHeight
                         if (isHorizontal) GridItemSpan(2) else GridItemSpan(1)
                     }
                 ) { index ->
-                    val info = data[index]
+                    val realIndex = if (index < offset || index >= offset + denseMapping.size) {
+                        index
+                    } else {
+                        offset + denseMapping[index - offset]
+                    }
+                    val info = data[realIndex]
                     if (info != null) {
                         thumbItemContent(info)
-                        PrefetchAround(data, index, 10) { imageRequest(it) }
+                        PrefetchAround(data, realIndex, 10) { imageRequest(it) }
                     }
                 }
                 if (showLoadStateIndicator) {

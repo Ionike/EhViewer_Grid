@@ -5,6 +5,7 @@ import android.view.ViewConfiguration
 import androidx.activity.compose.ReportDrawnWhen
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -23,9 +24,11 @@ import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.automirrored.filled.LastPage
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Reorder
+import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.outlined.Bookmarks
 import androidx.compose.material3.CardDefaults
@@ -50,10 +53,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -101,6 +106,7 @@ import com.hippo.ehviewer.client.data.ListUrlBuilder.Companion.MODE_UPLOADER
 import com.hippo.ehviewer.client.data.ListUrlBuilder.Companion.MODE_WHATS_HOT
 import com.hippo.ehviewer.client.parser.GalleryDetailUrlParser
 import com.hippo.ehviewer.client.parser.GalleryPageUrlParser
+import com.hippo.ehviewer.client.parser.ParserUtils
 import com.hippo.ehviewer.collectAsState
 import com.hippo.ehviewer.ui.DrawerHandle
 import com.hippo.ehviewer.ui.Screen
@@ -123,6 +129,7 @@ import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.ramcosta.composedestinations.spec.Direction
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.random.Random
 import kotlinx.coroutines.delay
@@ -167,6 +174,9 @@ fun AnimatedVisibilityScope.GalleryListScreen(
     var category by rememberMutableStateInDataStore("SearchCategory") { EhUtils.ALL_CATEGORY }
     var advancedSearchOption by rememberMutableStateInDataStore("AdvancedSearchOption") { AdvancedSearchOption() }
 
+    var recordedGalleryGid by rememberSaveable { mutableStateOf<Long?>(null) }
+    var recordedTime by rememberSaveable { mutableStateOf<Long?>(null) }
+
     DrawerHandle(!searchBarExpanded)
 
     LaunchedEffect(urlBuilder) {
@@ -191,6 +201,23 @@ fun AnimatedVisibilityScope.GalleryListScreen(
     ReportDrawnWhen { data.loadState.refresh !is LoadState.Loading }
     FavouriteStatusRouter.Observe(data)
     val listMode by Settings.listMode.collectAsState()
+
+    LaunchedEffect(recordedTime) {
+        if (recordedTime != null) {
+            snapshotFlow { data.itemSnapshotList }
+                .collect { snapshot ->
+                    val items = snapshot.items
+                    if (items.isNotEmpty()) {
+                        val time = recordedTime!!
+                        val closest = items.minByOrNull { item ->
+                            val itemTime = item.posted?.let { runCatching { ParserUtils.parseDate(it) }.getOrNull() } ?: 0L
+                            abs(itemTime - time)
+                        }
+                        recordedGalleryGid = closest?.gid
+                    }
+                }
+        }
+    }
 
     val entries = stringArrayResource(id = com.hippo.ehviewer.R.array.toplist_entries)
     val values = stringArrayResource(id = com.hippo.ehviewer.R.array.toplist_values)
@@ -488,6 +515,26 @@ fun AnimatedVisibilityScope.GalleryListScreen(
         searchBarOffsetY = { searchBarOffsetY },
         trailingIcon = {
             val sheetState = LocalSideSheetState.current
+            IconButton(onClick = {
+                recordedTime = System.currentTimeMillis()
+            }, shapes = IconButtonDefaults.shapes()) {
+                Icon(imageVector = Icons.Default.AccessTime, contentDescription = "Record")
+            }
+            IconButton(onClick = {
+                recordedGalleryGid?.let { gid ->
+                    val snapshot = data.itemSnapshotList
+                    val items = snapshot.items
+                    val indexInList = items.indexOfFirst { it.gid == gid }
+                    if (indexInList >= 0) {
+                        val finalIndex = indexInList + snapshot.placeholdersBefore
+                        launch {
+                            if (listMode == 0) listState.scrollToItem(finalIndex) else gridState.scrollToItem(finalIndex)
+                        }
+                    }
+                }
+            }, shapes = IconButtonDefaults.shapes()) {
+                Icon(imageVector = Icons.Default.Restore, contentDescription = "Scroll to recorded")
+            }
             IconButton(onClick = { launch { sheetState.open() } }, shapes = IconButtonDefaults.shapes()) {
                 Icon(imageVector = Icons.Outlined.Bookmarks, contentDescription = stringResource(id = R.string.quick_search))
             }
@@ -530,17 +577,19 @@ fun AnimatedVisibilityScope.GalleryListScreen(
             listMode = listMode,
             detailListState = listState,
             detailItemContent = { info ->
+                val isRecorded = info.gid == recordedGalleryGid
                 GalleryInfoListItem(
                     onClick = { navigate(info.asDst()) },
                     onLongClick = { launch { doGalleryInfoAction(info) } },
                     info = info,
                     showPages = showPages,
                     showProgress = showProgress,
-                    modifier = Modifier.height(height),
+                    modifier = Modifier.height(height).thenIf(isRecorded) { Modifier.background(Color(0xFF8B0000)) },
                 )
             },
             thumbListState = gridState,
             thumbItemContent = { info ->
+                val isRecorded = info.gid == recordedGalleryGid
                 GalleryInfoGridItem(
                     onClick = { navigate(info.asDst()) },
                     onLongClick = { launch { doGalleryInfoAction(info) } },
@@ -548,6 +597,7 @@ fun AnimatedVisibilityScope.GalleryListScreen(
                     showPages = showPages,
                     showProgress = showProgress,
                     showTitle = listMode == 2,
+                    modifier = Modifier.thenIf(isRecorded) { Modifier.background(Color(0xFF8B0000)) },
                 )
             },
             searchBarOffsetY = { searchBarOffsetY },
