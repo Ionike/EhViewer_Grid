@@ -698,6 +698,14 @@ object DownloadManager : OnSpiderListener, CoroutineScope {
                 info.total = total
                 info.legacy = total - finished
                 info.state = if (failed) DownloadInfo.STATE_FAILED else DownloadInfo.STATE_FINISH
+
+                if (!failed) {
+                    info.downloadDir?.let { dir ->
+                        (dir / "thumb.webp").delete()
+                        (dir / "thumb.jpg").delete()
+                    }
+                }
+
                 EhDB.putDownloadInfo(info)
                 mDownloadListener?.onFinish(info)
                 mutableNotifyFlow.emit(info)

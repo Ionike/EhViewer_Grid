@@ -10,6 +10,7 @@ import com.ehviewer.core.database.model.DownloadInfo
 import com.ehviewer.core.files.delete
 import com.ehviewer.core.files.isDirectory
 import com.ehviewer.core.files.isFile
+import com.ehviewer.core.files.list
 import com.ehviewer.core.files.sendTo
 import com.ehviewer.core.files.toUri
 import com.hippo.ehviewer.EhApplication.Companion.imageCache
@@ -48,6 +49,14 @@ object DownloadThumbInterceptor : Interceptor {
                     return result
                 }
             }
+
+            if (dir.isDirectory) {
+                dir.list().firstOrNull { it.name.startsWith("00000001.") }?.let {
+                    val new = chain.request.newBuilder().data(it.toUri()).build()
+                    return chain.withRequest(new).proceed()
+                }
+            }
+
             val result = chain.proceed()
             if (result is SuccessResult && dir.isDirectory) {
                 // Accessing the recreated file immediately after deleting it throws
