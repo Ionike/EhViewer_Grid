@@ -37,6 +37,20 @@ object DownloadThumbInterceptor : Interceptor {
                 EhDB.putGalleryInfo(info.galleryInfo)
             }
             val dir = downloadLocation / info.dirname!!
+
+            if (dir.isDirectory) {
+                dir.list().firstOrNull { it.name.startsWith("00000001.") }?.let {
+                    val format = thumbKey.substringAfterLast('.', "")
+                    if (format.isNotBlank()) {
+                        (dir / "thumb.$format").delete()
+                    }
+                    (dir / "thumb.jpg").delete()
+
+                    val new = chain.request.newBuilder().data(it.toUri()).build()
+                    return chain.withRequest(new).proceed()
+                }
+            }
+
             val format = thumbKey.substringAfterLast('.', "")
             check(format.isNotBlank())
             val thumb = dir / "thumb.$format"
@@ -49,14 +63,6 @@ object DownloadThumbInterceptor : Interceptor {
                     return result
                 }
             }
-
-            if (dir.isDirectory) {
-                dir.list().firstOrNull { it.name.startsWith("00000001.") }?.let {
-                    val new = chain.request.newBuilder().data(it.toUri()).build()
-                    return chain.withRequest(new).proceed()
-                }
-            }
-
             val result = chain.proceed()
             if (result is SuccessResult && dir.isDirectory) {
                 // Accessing the recreated file immediately after deleting it throws
