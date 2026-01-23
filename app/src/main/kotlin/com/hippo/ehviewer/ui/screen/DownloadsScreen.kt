@@ -33,6 +33,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Download
@@ -161,7 +162,8 @@ fun AnimatedVisibilityScope.DownloadsScreen(navigator: DestinationsNavigator) = 
     var fabExpanded by remember { mutableStateOf(false) }
     var fabHidden by remember { mutableStateOf(false) }
     val checkedInfoMap = remember { mutableStateMapOf<Long, DownloadInfo>() }
-    val selectMode by rememberUpdatedState(checkedInfoMap.isNotEmpty())
+    var explicitSelectMode by rememberSaveable { mutableStateOf(false) }
+    val selectMode = explicitSelectMode || checkedInfoMap.isNotEmpty()
     DrawerHandle(!selectMode && !searchBarExpanded)
 
     val density = LocalDensity.current
@@ -501,6 +503,22 @@ fun AnimatedVisibilityScope.DownloadsScreen(navigator: DestinationsNavigator) = 
         trailingIcon = {
             var expanded by remember { mutableStateOf(false) }
             val sideSheetState = LocalSideSheetState.current
+            if (gridView) {
+                IconButton(onClick = {
+                    if (!selectMode) {
+                        explicitSelectMode = true
+                    } else {
+                        val info = list.associateBy { it.gid }
+                        checkedInfoMap.putAll(info)
+                    }
+                }, shapes = IconButtonDefaults.shapes()) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = if (selectMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
             IconButton(onClick = { gridView = !gridView }, shapes = IconButtonDefaults.shapes()) {
                 val icon = if (gridView) Icons.AutoMirrored.Default.ViewList else Icons.Default.GridView
                 Icon(imageVector = icon, contentDescription = null)
@@ -613,23 +631,39 @@ fun AnimatedVisibilityScope.DownloadsScreen(navigator: DestinationsNavigator) = 
                             if (isHorizontal) GridItemSpan(2) else GridItemSpan(1)
                         }
                     ) { info ->
-                        GalleryInfoGridItem(
-                            onClick = ::onItemClick.partially1(info),
-                            onLongClick = { navigate(info.galleryInfo.asDst()) },
-                            info = info,
+                        val checked = info.gid in checkedInfoMap
+                        CheckableItem(
+                            checked = checked,
                             modifier = Modifier.thenIf(animateItems) { animateItem() },
-                            showLanguage = false,
-                            showProgress = showProgress,
-                            showTitle = true,
-                            onImageLoaded = { width, height ->
-                                if (info.thumbWidth == 0 || info.thumbHeight == 0) {
-                                    info.thumbWidth = width
-                                    info.thumbHeight = height
-                                    launchIO { EhDB.putDownloadInfo(info) }
-                                    invalidateKey = !invalidateKey
+                        ) { interactionSource ->
+                            GalleryInfoGridItem(
+                                onClick = {
+                                    if (selectMode) {
+                                        if (checked) {
+                                            checkedInfoMap.remove(info.gid)
+                                        } else {
+                                            checkedInfoMap[info.gid] = info
+                                        }
+                                    } else {
+                                        onItemClick(info)
+                                    }
+                                },
+                                onLongClick = { navigate(info.galleryInfo.asDst()) },
+                                info = info,
+                                showLanguage = false,
+                                showProgress = showProgress,
+                                showTitle = true,
+                                interactionSource = interactionSource,
+                                onImageLoaded = { width, height ->
+                                    if (info.thumbWidth == 0 || info.thumbHeight == 0) {
+                                        info.thumbWidth = width
+                                        info.thumbHeight = height
+                                        launchIO { EhDB.putDownloadInfo(info) }
+                                        invalidateKey = !invalidateKey
+                                    }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             } else {
@@ -717,6 +751,7 @@ fun AnimatedVisibilityScope.DownloadsScreen(navigator: DestinationsNavigator) = 
         onExpandChanged = {
             fabExpanded = it
             checkedInfoMap.clear()
+            if (!it) explicitSelectMode = false
         },
         autoCancel = !selectMode,
     ) {
