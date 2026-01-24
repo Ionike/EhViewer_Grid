@@ -301,32 +301,32 @@ fun AnimatedVisibilityScope.DownloadScreen(navigator: DestinationsNavigator) = S
                     launchSnackbar(restoreFailed)
                 }
             }
-            WorkPreference(
-                title = stringResource(id = R.string.settings_download_clean_redundancy),
-                summary = stringResource(id = R.string.settings_download_clean_redundancy_summary),
-            ) {
-                fun isRedundant(file: Path): Boolean {
-                    if (!file.isDirectory) return false
-                    val name = file.name
-                    val gid = name.substringBefore('-').toLongOrNull() ?: return false
-                    return name != DownloadManager.getDownloadInfo(gid)?.dirname
-                }
-                val list = downloadLocation.list().filter(::isRedundant)
-                if (list.isNotEmpty()) {
-                    awaitConfirmationOrCancel(
-                        confirmText = R.string.delete,
-                        title = R.string.settings_download_clean_redundancy,
-                    ) {
-                        LazyColumn {
-                            items(list) {
-                                Text(it.name, modifier = Modifier.padding(vertical = 8.dp))
-                            }
-                        }
-                    }
-                }
-                val cnt = list.count { runCatching { it.delete() }.getOrNull() != null }
-                launchSnackbar(FINAL_CLEAR_REDUNDANCY_MSG(cnt))
-            }
+            // WorkPreference(
+            //     title = stringResource(id = R.string.settings_download_clean_redundancy),
+            //     summary = stringResource(id = R.string.settings_download_clean_redundancy_summary),
+            // ) {
+            //     fun isRedundant(file: Path): Boolean {
+            //         if (!file.isDirectory) return false
+            //         val name = file.name
+            //         val gid = name.substringBefore('-').toLongOrNull() ?: return false
+            //         return name != DownloadManager.getDownloadInfo(gid)?.dirname
+            //     }
+            //     val list = downloadLocation.list().filter(::isRedundant)
+            //     if (list.isNotEmpty()) {
+            //         awaitConfirmationOrCancel(
+            //             confirmText = R.string.delete,
+            //             title = R.string.settings_download_clean_redundancy,
+            //         ) {
+            //             LazyColumn {
+            //             items(list) {
+            //                 Text(it.name, modifier = Modifier.padding(vertical = 8.dp))
+            //             }
+            //         }
+            //         }
+            //     }
+            //     val cnt = list.count { runCatching { it.delete() }.getOrNull() != null }
+            //     launchSnackbar(FINAL_CLEAR_REDUNDANCY_MSG(cnt))
+            // }
         }
     }
 }
@@ -339,6 +339,6 @@ private class RestoreItem(
 ) : GalleryInfo by galleryInfo
 private val RESTORE_NOT_FOUND = appCtx.getString(R.string.settings_download_restore_not_found)
 private val RESTORE_COUNT_MSG = { cnt: Int -> if (cnt == 0) RESTORE_NOT_FOUND else appCtx.getString(R.string.settings_download_restore_successfully, cnt) }
-private val NO_REDUNDANCY = appCtx.getString(R.string.settings_download_clean_redundancy_no_redundancy)
-private val CLEAR_REDUNDANCY_DONE = { cnt: Int -> appCtx.getString(R.string.settings_download_clean_redundancy_done, cnt) }
-private val FINAL_CLEAR_REDUNDANCY_MSG = { cnt: Int -> if (cnt == 0) NO_REDUNDANCY else CLEAR_REDUNDANCY_DONE(cnt) }
+// private val NO_REDUNDANCY = appCtx.getString(R.string.settings_download_clean_redundancy_no_redundancy)
+// private val CLEAR_REDUNDANCY_DONE = { cnt: Int -> appCtx.getString(R.string.settings_download_clean_redundancy_done, cnt) }
+// private val FINAL_CLEAR_REDUNDANCY_MSG = { cnt: Int -> if (cnt == 0) NO_REDUNDANCY else CLEAR_REDUNDANCY_DONE(cnt) }
