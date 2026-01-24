@@ -215,6 +215,12 @@ fun SearchFilter(
         )
         fun checked(bit: Int) = advancedOption.advanceSearch and bit != 0
         fun AdvancedSearchOption.inv(bit: Int) = onAdvancedOptionChange(copy(advanceSearch = advanceSearch xor bit))
+        val disableFilter = stringResource(id = R.string.search_sf)
+        FilterChip(
+            selected = checked(AdvanceTable.SFL),
+            onClick = { advancedOption.inv(AdvanceTable.SFL) },
+            label = { Text(text = disableFilter + stringResource(id = R.string.search_sfl)) },
+        )
         FilterChip(
             selected = checked(AdvanceTable.SH),
             onClick = { advancedOption.inv(AdvanceTable.SH) },
@@ -224,12 +230,6 @@ fun SearchFilter(
             selected = checked(AdvanceTable.STO),
             onClick = { advancedOption.inv(AdvanceTable.STO) },
             label = { Text(text = stringResource(id = R.string.search_sto)) },
-        )
-        val disableFilter = stringResource(id = R.string.search_sf)
-        FilterChip(
-            selected = checked(AdvanceTable.SFL),
-            onClick = { advancedOption.inv(AdvanceTable.SFL) },
-            label = { Text(text = disableFilter + stringResource(id = R.string.search_sfl)) },
         )
         FilterChip(
             selected = checked(AdvanceTable.SFU),
