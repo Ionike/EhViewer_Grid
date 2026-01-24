@@ -41,18 +41,11 @@ android {
         enableV4Signing = true
     }
 
-    val commitSha = providers.exec {
-        commandLine = "git rev-parse --short=7 HEAD".split(' ')
-    }.standardOutput.asText.get().trim()
+    val commitSha = "xxxxxxx"
 
-    val commitTime = providers.exec {
-        commandLine = "git log -1 --format=%ct".split(' ')
-    }.standardOutput.asText.get().trim()
+    val commitTime = "0"
 
-    val repoName = providers.exec {
-        commandLine = "git remote get-url origin".split(' ')
-    }.standardOutput.asText.get().trim().removePrefix("https://github.com/").removePrefix("git@github.com:")
-        .removeSuffix(".git")
+    val repoName = "EhViewer-NekoInverter/EhViewer"
 
     val snapshot = !hasProperty("release")
 
