@@ -4,7 +4,8 @@
       "Bash(find:*)",
       "Bash(./gradlew assembleDebug:*)",
       "Bash(cmd /c \"gradlew.bat assembleDebug 2>&1\")",
-      "Bash(./gradlew compileDebugKotlin:*)"
+      "Bash(./gradlew compileDebugKotlin:*)",
+      "Bash(cmd /c \"gradlew.bat assembleRelease 2>&1\")"
     ]
   }
 }
