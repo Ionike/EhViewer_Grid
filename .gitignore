@@ -11,3 +11,5 @@ build
 .claude
 .apk
 .idsig
+/key0
+/app/build/outputs/apk/release/

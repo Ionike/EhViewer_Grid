@@ -186,7 +186,7 @@ fun GalleryList(
                         val info = data[realIndex]
                         val isHorizontal = info != null && info.thumbWidth > info.thumbHeight
                         if (isHorizontal) GridItemSpan(2) else GridItemSpan(1)
-                    }
+                    },
                 ) { index ->
                     val realIndex = if (index < offset || index >= offset + denseMapping.size) {
                         index

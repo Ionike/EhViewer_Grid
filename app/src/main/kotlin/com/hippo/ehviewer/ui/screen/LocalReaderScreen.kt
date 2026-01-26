@@ -65,9 +65,7 @@ import okio.Path.Companion.toPath
 private val GID_REGEX = Regex("^(\\d+)[-_].*")
 private val ARCHIVE_EXTENSIONS = listOf(".cbz", ".zip")
 
-private fun extractGidFromName(name: String): Long? {
-    return GID_REGEX.matchEntire(name)?.groupValues?.get(1)?.toLongOrNull()
-}
+private fun extractGidFromName(name: String): Long? = GID_REGEX.matchEntire(name)?.groupValues?.get(1)?.toLongOrNull()
 
 private fun classifyFile(file: Path): LocalFileInfo? {
     val name = file.name

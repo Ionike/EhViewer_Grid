@@ -629,7 +629,7 @@ fun AnimatedVisibilityScope.DownloadsScreen(navigator: DestinationsNavigator) = 
                         span = { info ->
                             val isHorizontal = info.thumbWidth > info.thumbHeight
                             if (isHorizontal) GridItemSpan(2) else GridItemSpan(1)
-                        }
+                        },
                     ) { info ->
                         val checked = info.gid in checkedInfoMap
                         CheckableItem(
@@ -661,7 +661,7 @@ fun AnimatedVisibilityScope.DownloadsScreen(navigator: DestinationsNavigator) = 
                                         launchIO { EhDB.putDownloadInfo(info) }
                                         invalidateKey = !invalidateKey
                                     }
-                                }
+                                },
                             )
                         }
                     }

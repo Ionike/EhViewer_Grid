@@ -5,7 +5,7 @@ import kotlin.math.min
 fun <T> reorderDense(
     items: List<T>,
     columns: Int,
-    spanProvider: (T) -> Int
+    spanProvider: (T) -> Int,
 ): List<Int> {
     val count = items.size
     val taken = BooleanArray(count)
