@@ -6,6 +6,8 @@
 
 My modification of EhViewer Kotlin with new features, UI and bug fix.
 
+*for my own use. not maintained
+
 # What's different:
 Manage and read local galleries along with EhViewer downloaded galleries, with folder tree and search function(Local gallery must be stored as .cbz file)
 Mesh grided thumbnail view with titles
@@ -20,12 +22,12 @@ Device UI optimization(for my y700gen4 lol)
 
 ## Local Reader
 <p align="center">
-  <img src="imgs/1000089781.jpg" alt="Local Reader" width="400"/>
+  <img src="imgs/1000089875.jpg" alt="Local Reader" width="400"/>
 </p>
 
 ## Mesh Grided View with Title and Horizontal View
 <p align="center">
-  <img src="imgs/1000089875.jpg" alt="Mesh Grided View with Title and Horizontal View" width="400"/>
+  <img src="imgs/1000089781.jpg" alt="Mesh Grided View with Title and Horizontal View" width="400"/>
 </p>
 
 # What's next
