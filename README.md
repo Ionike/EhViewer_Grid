@@ -31,6 +31,7 @@ Device UI optimization(for my y700gen4 lol)
 </p>
 
 # What's next
+Local gallery DB
 Support of other sites   
 Optimize for more devices  
 
