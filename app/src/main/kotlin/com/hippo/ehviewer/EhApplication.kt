@@ -54,6 +54,7 @@ import com.hippo.ehviewer.coil.CropBorderInterceptor
 import com.hippo.ehviewer.coil.DetectBorderInterceptor
 import com.hippo.ehviewer.coil.DownloadThumbInterceptor
 import com.hippo.ehviewer.coil.HardwareBitmapInterceptor
+import com.hippo.ehviewer.coil.LocalArchiveThumbFetcher
 import com.hippo.ehviewer.coil.MapExtraInfoInterceptor
 import com.hippo.ehviewer.coil.MergeInterceptor
 import com.hippo.ehviewer.coil.QrCodeInterceptor
@@ -177,6 +178,7 @@ class EhApplication : Application(), SingletonImageLoader.Factory {
                     connectivityChecker = { ConnectivityChecker.ONLINE },
                 ),
             )
+            add(LocalArchiveThumbFetcher.Factory())
             add(MergeInterceptor)
             add(DownloadThumbInterceptor)
             if (isAtLeastO) {
