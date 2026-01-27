@@ -262,7 +262,10 @@ fun AnimatedVisibilityScope.LocalReaderScreen(navigator: DestinationsNavigator) 
         expanded = searchBarExpanded,
         onExpandedChange = {
             searchBarExpanded = it
-            if (it) checkedInfoMap.clear()
+            if (it) {
+                checkedInfoMap.clear()
+                explicitSelectMode = false
+            }
         },
         title = title,
         searchFieldHint = hint,

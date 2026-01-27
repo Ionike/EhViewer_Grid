@@ -7,7 +7,10 @@
       "Bash(./gradlew compileDebugKotlin:*)",
       "Bash(cmd /c \"gradlew.bat assembleRelease 2>&1\")",
       "Bash(cmd /c \"gradlew.bat assembleRelease --info 2>&1\")",
-      "Bash(./gradlew:*)"
+      "Bash(./gradlew:*)",
+      "Bash(git remote add:*)",
+      "Bash(git fetch:*)",
+      "Bash(git merge:*)"
     ]
   }
 }
