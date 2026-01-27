@@ -1,5 +1,6 @@
 package com.hippo.ehviewer.ui.screen
 
+import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.foundation.layout.Arrangement
@@ -12,9 +13,11 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -26,6 +29,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -40,10 +44,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.ehviewer.core.files.delete
 import com.ehviewer.core.files.isDirectory
 import com.ehviewer.core.files.list
 import com.ehviewer.core.files.metadataOrNull
+import com.ehviewer.core.files.moveTo
 import com.ehviewer.core.i18n.R
+import com.ehviewer.core.ui.component.FabLayout
 import com.ehviewer.core.ui.component.FastScrollLazyVerticalGrid
 import com.ehviewer.core.ui.icons.EhIcons
 import com.ehviewer.core.ui.icons.big.Download
@@ -61,11 +68,12 @@ import com.hippo.ehviewer.ui.Screen
 import com.hippo.ehviewer.ui.main.LocalFileGridItem
 import com.hippo.ehviewer.ui.main.reorderDense
 import com.hippo.ehviewer.ui.navToReader
+import com.hippo.ehviewer.ui.tools.awaitConfirmationOrCancel
+import com.hippo.ehviewer.ui.tools.awaitSelectItem
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlin.math.roundToInt
-import moe.tarsin.navigate
 import okio.Path
 import okio.Path.Companion.toPath
 
@@ -146,20 +154,31 @@ fun AnimatedVisibilityScope.LocalReaderScreen(navigator: DestinationsNavigator) 
     var keyword by rememberSaveable { mutableStateOf("") }
     var sortModeOrdinal by rememberSaveable { mutableIntStateOf(LocalSortMode.DateModifiedDesc.ordinal) }
     val sortMode = LocalSortMode.entries[sortModeOrdinal]
-    var sortMenuExpanded by remember { mutableStateOf(false) }
+
+    val checkedInfoMap = remember { mutableStateMapOf<String, LocalFileInfo>() }
+    var explicitSelectMode by rememberSaveable { mutableStateOf(false) }
+    val selectMode = explicitSelectMode || checkedInfoMap.isNotEmpty()
+    var fabExpanded by remember { mutableStateOf(false) }
 
     val rootPath = remember { downloadLocation.toString() }
     var currentPath by rememberSaveable { mutableStateOf(rootPath) }
     val pathStack = remember { mutableStateListOf<String>() }
     val files = remember { mutableStateListOf<LocalFileInfo>() }
 
-    DrawerHandle(!searchBarExpanded)
+    DrawerHandle(!selectMode && !searchBarExpanded)
 
-    BackHandler(enabled = pathStack.isNotEmpty() || currentPath != rootPath) {
-        if (pathStack.isNotEmpty()) {
-            currentPath = pathStack.removeAt(pathStack.lastIndex)
-        } else if (currentPath != rootPath) {
-            currentPath = rootPath
+    BackHandler(enabled = selectMode || pathStack.isNotEmpty() || currentPath != rootPath) {
+        when {
+            selectMode -> {
+                checkedInfoMap.clear()
+                explicitSelectMode = false
+            }
+            pathStack.isNotEmpty() -> {
+                currentPath = pathStack.removeAt(pathStack.lastIndex)
+            }
+            currentPath != rootPath -> {
+                currentPath = rootPath
+            }
         }
     }
 
@@ -177,71 +196,59 @@ fun AnimatedVisibilityScope.LocalReaderScreen(navigator: DestinationsNavigator) 
     val density = LocalDensity.current
 
     fun onItemClick(item: LocalFileInfo) {
-        when (item) {
-            is LocalFileInfo.Folder -> {
-                pathStack.add(currentPath)
-                currentPath = item.path.toString()
+        if (selectMode) {
+            val key = item.path.toString()
+            if (key in checkedInfoMap) {
+                checkedInfoMap.remove(key)
+            } else {
+                checkedInfoMap[key] = item
             }
-            is LocalFileInfo.Archive -> {
-                navToReader(item.path.toString())
-            }
-            is LocalFileInfo.KnownGallery -> {
-                launchIO { EhDB.putHistoryInfo(item.galleryInfo) }
-                navToReader(item.galleryInfo)
+        } else {
+            when (item) {
+                is LocalFileInfo.Folder -> {
+                    pathStack.add(currentPath)
+                    currentPath = item.path.toString()
+                }
+                is LocalFileInfo.Archive -> {
+                    navToReader(item.path.toString())
+                }
+                is LocalFileInfo.KnownGallery -> {
+                    launchIO { EhDB.putHistoryInfo(item.galleryInfo) }
+                    navToReader(item.galleryInfo)
+                }
             }
         }
     }
 
     fun onItemLongClick(item: LocalFileInfo) {
-        when (item) {
-            is LocalFileInfo.KnownGallery -> {
-                navigate(item.galleryInfo.asDst())
-            }
-            else -> {
-                // No action for non-database items
-            }
+        if (!selectMode) {
+            checkedInfoMap[item.path.toString()] = item
         }
     }
 
     SearchBarScreen(
         onApplySearch = { keyword = it },
         expanded = searchBarExpanded,
-        onExpandedChange = { searchBarExpanded = it },
+        onExpandedChange = {
+            searchBarExpanded = it
+            if (it) checkedInfoMap.clear()
+        },
         title = title,
         searchFieldHint = hint,
         searchBarOffsetY = { searchBarOffsetY },
         trailingIcon = {
-            IconButton(onClick = { sortMenuExpanded = true }, shapes = IconButtonDefaults.shapes()) {
-                Icon(imageVector = Icons.AutoMirrored.Default.Sort, contentDescription = null)
-            }
-            DropdownMenu(expanded = sortMenuExpanded, onDismissRequest = { sortMenuExpanded = false }) {
-                DropdownMenuItem(
-                    text = { Text(text = stringResource(id = R.string.title_asc)) },
-                    onClick = {
-                        sortMenuExpanded = false
-                        sortModeOrdinal = LocalSortMode.TitleAsc.ordinal
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text(text = stringResource(id = R.string.title_desc)) },
-                    onClick = {
-                        sortMenuExpanded = false
-                        sortModeOrdinal = LocalSortMode.TitleDesc.ordinal
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text(text = "Date modified (ascending)") },
-                    onClick = {
-                        sortMenuExpanded = false
-                        sortModeOrdinal = LocalSortMode.DateModifiedAsc.ordinal
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text(text = "Date modified (descending)") },
-                    onClick = {
-                        sortMenuExpanded = false
-                        sortModeOrdinal = LocalSortMode.DateModifiedDesc.ordinal
-                    },
+            IconButton(onClick = {
+                if (!selectMode) {
+                    explicitSelectMode = true
+                } else {
+                    val info = files.associateBy { it.path.toString() }
+                    checkedInfoMap.putAll(info)
+                }
+            }, shapes = IconButtonDefaults.shapes()) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = if (selectMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                 )
             }
         },
@@ -317,17 +324,104 @@ fun AnimatedVisibilityScope.LocalReaderScreen(navigator: DestinationsNavigator) 
                         }
                     },
                 ) { item ->
-                    LocalFileGridItem(
-                        onClick = { onItemClick(item) },
-                        onLongClick = when (item) {
-                            is LocalFileInfo.KnownGallery -> ({ onItemLongClick(item) })
-                            else -> null
-                        },
-                        item = item,
-                        showProgress = showProgress,
+                    val checked = item.path.toString() in checkedInfoMap
+                    CheckableItem(
+                        checked = checked,
                         modifier = Modifier.thenIf(animateItems) { animateItem() },
-                    )
+                    ) { interactionSource ->
+                        LocalFileGridItem(
+                            onClick = { onItemClick(item) },
+                            onLongClick = { onItemLongClick(item) },
+                            item = item,
+                            showProgress = showProgress,
+                            interactionSource = interactionSource,
+                        )
+                    }
                 }
+            }
+        }
+    }
+
+    FabLayout(
+        hidden = false,
+        expanded = fabExpanded || selectMode,
+        onExpandChanged = {
+            fabExpanded = it
+            checkedInfoMap.clear()
+            if (!it) explicitSelectMode = false
+        },
+        autoCancel = !selectMode,
+    ) {
+        if (!selectMode) {
+            onClick(Icons.AutoMirrored.Default.Sort) {
+                val sortOptions = listOf(
+                    contextOf<Context>().getString(R.string.title_asc),
+                    contextOf<Context>().getString(R.string.title_desc),
+                    "Date modified (ascending)",
+                    "Date modified (descending)",
+                )
+                val selected = awaitSelectItem(sortOptions, R.string.sort_by, sortModeOrdinal)
+                sortModeOrdinal = selected
+            }
+        } else {
+            onClick(Icons.Default.DoneAll, autoClose = false) {
+                val info = files.associateBy { it.path.toString() }
+                checkedInfoMap.putAll(info)
+            }
+            onClick(Icons.Default.Delete) {
+                awaitConfirmationOrCancel(
+                    confirmText = R.string.delete,
+                    text = { Text(text = "Delete ${checkedInfoMap.size} items?") },
+                )
+                val toDelete = checkedInfoMap.values.toList()
+                checkedInfoMap.clear()
+                explicitSelectMode = false
+                launchIO {
+                    toDelete.forEach { it.path.delete() }
+                }
+                files.removeAll(toDelete)
+            }
+            onClick(Icons.AutoMirrored.Default.DriveFileMove) {
+                val selectedPaths = checkedInfoMap.keys
+                // Get folders in current directory (excluding selected items)
+                val currentPathObj = currentPath.toPath()
+                val folders = files
+                    .filterIsInstance<LocalFileInfo.Folder>()
+                    .filter { it.path.toString() !in selectedPaths }
+                    .map { it.name }
+                    .toMutableList()
+
+                // Add parent directory option if not at root
+                if (currentPath != rootPath) {
+                    folders.add(0, "..")
+                }
+
+                if (folders.isEmpty()) {
+                    awaitConfirmationOrCancel(
+                        confirmText = android.R.string.ok,
+                        showCancelButton = false,
+                        text = { Text(text = "No folders available to move to") },
+                    )
+                    return@onClick
+                }
+
+                val selected = awaitSelectItem(folders, R.string.download_move_dialog_title)
+                val targetDir = if (folders[selected] == "..") {
+                    currentPathObj.parent!!
+                } else {
+                    currentPathObj / folders[selected]
+                }
+
+                val toMove = checkedInfoMap.values.toList()
+                checkedInfoMap.clear()
+                explicitSelectMode = false
+                launchIO {
+                    toMove.forEach { item ->
+                        val target = targetDir / item.path.name
+                        item.path moveTo target
+                    }
+                }
+                files.removeAll(toMove)
             }
         }
     }
