@@ -76,9 +76,12 @@ private fun classifyFile(file: Path): LocalFileInfo? {
             LocalFileInfo.Archive(file, name, gid)
         }
         file.isDirectory -> {
-            val gid = extractGidFromName(name)
             val downloadInfo = if (DownloadManager.isInitialized) {
+                // First try to extract GID from folder name
+                val gid = extractGidFromName(name)
                 gid?.let { DownloadManager.getDownloadInfo(it) }
+                    // Fallback: search by dirname match
+                    ?: DownloadManager.downloadInfoList.find { it.dirname == name }
             } else {
                 null
             }

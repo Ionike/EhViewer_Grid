@@ -352,7 +352,7 @@ suspend fun GalleryInfo.downloadDirname(): String {
     var dirname = EhDB.getDownloadDirname(gid)
     if (dirname == null) {
         val title = getSuitableTitle(this)
-        dirname = FileUtils.sanitizeFilename("$gid-$title")
+        dirname = FileUtils.sanitizeFilename(title)
         EhDB.putDownloadDirname(gid, dirname)
     }
     return dirname
