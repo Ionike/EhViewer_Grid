@@ -46,9 +46,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.ehviewer.core.files.delete
 import com.ehviewer.core.files.isDirectory
+import com.ehviewer.core.files.isFile
 import com.ehviewer.core.files.list
 import com.ehviewer.core.files.metadataOrNull
+import com.ehviewer.core.files.mkdirs
 import com.ehviewer.core.files.moveTo
+import com.ehviewer.core.files.sendTo
 import com.ehviewer.core.i18n.R
 import com.ehviewer.core.ui.component.FabLayout
 import com.ehviewer.core.ui.component.FastScrollLazyVerticalGrid
@@ -74,6 +77,7 @@ import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlin.math.roundToInt
+import moe.tarsin.navigate
 import okio.Path
 import okio.Path.Companion.toPath
 
@@ -81,6 +85,28 @@ private val GID_REGEX = Regex("^(\\d+)[-_].*")
 private val ARCHIVE_EXTENSIONS = listOf(".cbz", ".zip")
 
 private fun extractGidFromName(name: String): Long? = GID_REGEX.matchEntire(name)?.groupValues?.get(1)?.toLongOrNull()
+
+private fun movePathTo(source: Path, target: Path) {
+    if (source.isFile) {
+        source moveTo target
+    } else if (source.isDirectory) {
+        // For directories, copy recursively then delete
+        copyDirectoryRecursively(source, target)
+        source.delete()
+    }
+}
+
+private fun copyDirectoryRecursively(source: Path, target: Path) {
+    target.mkdirs()
+    source.list().forEach { child ->
+        val targetChild = target / child.name
+        if (child.isFile) {
+            child sendTo targetChild
+        } else if (child.isDirectory) {
+            copyDirectoryRecursively(child, targetChild)
+        }
+    }
+}
 
 private enum class LocalSortMode {
     TitleAsc,
@@ -221,8 +247,13 @@ fun AnimatedVisibilityScope.LocalReaderScreen(navigator: DestinationsNavigator) 
     }
 
     fun onItemLongClick(item: LocalFileInfo) {
-        if (!selectMode) {
-            checkedInfoMap[item.path.toString()] = item
+        when (item) {
+            is LocalFileInfo.KnownGallery -> {
+                navigate(item.galleryInfo.asDst())
+            }
+            else -> {
+                // No action for non-database items
+            }
         }
     }
 
@@ -331,7 +362,10 @@ fun AnimatedVisibilityScope.LocalReaderScreen(navigator: DestinationsNavigator) 
                     ) { interactionSource ->
                         LocalFileGridItem(
                             onClick = { onItemClick(item) },
-                            onLongClick = { onItemLongClick(item) },
+                            onLongClick = when (item) {
+                                is LocalFileInfo.KnownGallery -> ({ onItemLongClick(item) })
+                                else -> null
+                            },
                             item = item,
                             showProgress = showProgress,
                             interactionSource = interactionSource,
@@ -347,8 +381,10 @@ fun AnimatedVisibilityScope.LocalReaderScreen(navigator: DestinationsNavigator) 
         expanded = fabExpanded || selectMode,
         onExpandChanged = {
             fabExpanded = it
-            checkedInfoMap.clear()
-            if (!it) explicitSelectMode = false
+            if (!it) {
+                checkedInfoMap.clear()
+                explicitSelectMode = false
+            }
         },
         autoCancel = !selectMode,
     ) {
@@ -377,7 +413,9 @@ fun AnimatedVisibilityScope.LocalReaderScreen(navigator: DestinationsNavigator) 
                 checkedInfoMap.clear()
                 explicitSelectMode = false
                 launchIO {
-                    toDelete.forEach { it.path.delete() }
+                    toDelete.forEach { item ->
+                        runCatching { item.path.delete() }
+                    }
                 }
                 files.removeAll(toDelete)
             }
@@ -417,8 +455,10 @@ fun AnimatedVisibilityScope.LocalReaderScreen(navigator: DestinationsNavigator) 
                 explicitSelectMode = false
                 launchIO {
                     toMove.forEach { item ->
-                        val target = targetDir / item.path.name
-                        item.path moveTo target
+                        runCatching {
+                            val target = targetDir / item.path.name
+                            movePathTo(item.path, target)
+                        }
                     }
                 }
                 files.removeAll(toMove)
