@@ -470,6 +470,8 @@
     <string name="uploaded_time_asc">Uploaded time (ascending)</string>
     <string name="title_asc">Title (ascending)</string>
     <string name="title_desc">Title (descending)</string>
+    <string name="date_modified_asc">Date modified (ascending)</string>
+    <string name="date_modified_desc">Date modified (descending)</string>
     <string name="page_count_asc">Page count (ascending)</string>
     <string name="page_count_desc">Page count (descending)</string>
     <string name="group_by_download_label">Group by download label</string>

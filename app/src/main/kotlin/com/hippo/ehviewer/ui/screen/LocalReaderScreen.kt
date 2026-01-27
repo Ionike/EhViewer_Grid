@@ -11,7 +11,13 @@ import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,6 +42,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.ehviewer.core.files.isDirectory
 import com.ehviewer.core.files.list
+import com.ehviewer.core.files.metadataOrNull
 import com.ehviewer.core.i18n.R
 import com.ehviewer.core.ui.component.FastScrollLazyVerticalGrid
 import com.ehviewer.core.ui.icons.EhIcons
@@ -67,13 +74,21 @@ private val ARCHIVE_EXTENSIONS = listOf(".cbz", ".zip")
 
 private fun extractGidFromName(name: String): Long? = GID_REGEX.matchEntire(name)?.groupValues?.get(1)?.toLongOrNull()
 
+private enum class LocalSortMode {
+    TitleAsc,
+    TitleDesc,
+    DateModifiedAsc,
+    DateModifiedDesc,
+}
+
 private fun classifyFile(file: Path): LocalFileInfo? {
     val name = file.name
     val lowerName = name.lowercase()
+    val lastModified = file.metadataOrNull()?.lastModifiedAtMillis ?: 0
     return when {
         ARCHIVE_EXTENSIONS.any { lowerName.endsWith(it) } -> {
             val gid = extractGidFromName(name)
-            LocalFileInfo.Archive(file, name, gid)
+            LocalFileInfo.Archive(file, name, lastModified, gid)
         }
         file.isDirectory -> {
             val downloadInfo = if (DownloadManager.isInitialized) {
@@ -86,26 +101,35 @@ private fun classifyFile(file: Path): LocalFileInfo? {
                 null
             }
             if (downloadInfo != null) {
-                LocalFileInfo.KnownGallery(file, name, downloadInfo.galleryInfo)
+                LocalFileInfo.KnownGallery(file, name, lastModified, downloadInfo.galleryInfo)
             } else {
-                LocalFileInfo.Folder(file, name)
+                LocalFileInfo.Folder(file, name, lastModified)
             }
         }
         else -> null
     }
 }
 
-private suspend fun loadFiles(path: Path): List<LocalFileInfo> {
+private suspend fun loadFiles(path: Path, sortMode: LocalSortMode): List<LocalFileInfo> {
     return withIOContext {
         path.list()
             .mapNotNull { classifyFile(it) }
-            .sortedWith(compareBy<LocalFileInfo> {
-                when (it) {
-                    is LocalFileInfo.Folder -> 0
-                    is LocalFileInfo.KnownGallery -> 1
-                    is LocalFileInfo.Archive -> 2
-                }
-            }.thenBy { it.name.lowercase() })
+            .sortedWith(
+                compareBy<LocalFileInfo> {
+                    when (it) {
+                        is LocalFileInfo.Folder -> 0
+                        is LocalFileInfo.KnownGallery -> 1
+                        is LocalFileInfo.Archive -> 2
+                    }
+                }.then(
+                    when (sortMode) {
+                        LocalSortMode.TitleAsc -> compareBy { it.name.lowercase() }
+                        LocalSortMode.TitleDesc -> compareByDescending { it.name.lowercase() }
+                        LocalSortMode.DateModifiedAsc -> compareBy { it.lastModified }
+                        LocalSortMode.DateModifiedDesc -> compareByDescending { it.lastModified }
+                    },
+                ),
+            )
     }
 }
 
@@ -120,6 +144,9 @@ fun AnimatedVisibilityScope.LocalReaderScreen(navigator: DestinationsNavigator) 
     var searchBarExpanded by rememberSaveable { mutableStateOf(false) }
     var searchBarOffsetY by remember { mutableIntStateOf(0) }
     var keyword by rememberSaveable { mutableStateOf("") }
+    var sortModeOrdinal by rememberSaveable { mutableIntStateOf(LocalSortMode.DateModifiedDesc.ordinal) }
+    val sortMode = LocalSortMode.entries[sortModeOrdinal]
+    var sortMenuExpanded by remember { mutableStateOf(false) }
 
     val rootPath = remember { downloadLocation.toString() }
     var currentPath by rememberSaveable { mutableStateOf(rootPath) }
@@ -130,15 +157,15 @@ fun AnimatedVisibilityScope.LocalReaderScreen(navigator: DestinationsNavigator) 
 
     BackHandler(enabled = pathStack.isNotEmpty() || currentPath != rootPath) {
         if (pathStack.isNotEmpty()) {
-            currentPath = pathStack.removeLast()
+            currentPath = pathStack.removeAt(pathStack.lastIndex)
         } else if (currentPath != rootPath) {
             currentPath = rootPath
         }
     }
 
-    LaunchedEffect(currentPath, keyword) {
+    LaunchedEffect(currentPath, keyword, sortMode) {
         val path = currentPath.toPath()
-        val loaded = loadFiles(path)
+        val loaded = loadFiles(path, sortMode)
         files.clear()
         if (keyword.isEmpty()) {
             files.addAll(loaded)
@@ -183,6 +210,41 @@ fun AnimatedVisibilityScope.LocalReaderScreen(navigator: DestinationsNavigator) 
         title = title,
         searchFieldHint = hint,
         searchBarOffsetY = { searchBarOffsetY },
+        trailingIcon = {
+            IconButton(onClick = { sortMenuExpanded = true }, shapes = IconButtonDefaults.shapes()) {
+                Icon(imageVector = Icons.AutoMirrored.Default.Sort, contentDescription = null)
+            }
+            DropdownMenu(expanded = sortMenuExpanded, onDismissRequest = { sortMenuExpanded = false }) {
+                DropdownMenuItem(
+                    text = { Text(text = stringResource(id = R.string.title_asc)) },
+                    onClick = {
+                        sortMenuExpanded = false
+                        sortModeOrdinal = LocalSortMode.TitleAsc.ordinal
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(text = stringResource(id = R.string.title_desc)) },
+                    onClick = {
+                        sortMenuExpanded = false
+                        sortModeOrdinal = LocalSortMode.TitleDesc.ordinal
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(text = "Date modified (ascending)") },
+                    onClick = {
+                        sortMenuExpanded = false
+                        sortModeOrdinal = LocalSortMode.DateModifiedAsc.ordinal
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(text = "Date modified (descending)") },
+                    onClick = {
+                        sortMenuExpanded = false
+                        sortModeOrdinal = LocalSortMode.DateModifiedDesc.ordinal
+                    },
+                )
+            }
+        },
     ) { contentPadding ->
         val gridInterval = dimensionResource(com.hippo.ehviewer.R.dimen.gallery_grid_interval)
         val thumbColumns by Settings.thumbColumns.collectAsState()
