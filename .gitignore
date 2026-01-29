@@ -9,6 +9,7 @@ build
 .vscode
 /captures
 .claude
+/.claude
 .apk
 .idsig
 /key0

@@ -62,6 +62,7 @@ import com.hippo.ehviewer.spider.SpiderQueen.Companion.SPIDER_INFO_FILENAME
 import com.hippo.ehviewer.spider.readComicInfo
 import com.hippo.ehviewer.spider.readCompatFromPath
 import com.hippo.ehviewer.spider.speedLevelToSpeed
+import com.hippo.ehviewer.spider.toSimpleTags
 import com.hippo.ehviewer.ui.Screen
 import com.hippo.ehviewer.ui.keepNoMediaFileStatus
 import com.hippo.ehviewer.ui.main.NavigationIcon
@@ -306,13 +307,31 @@ fun AnimatedVisibilityScope.DownloadScreen(navigator: DestinationsNavigator) = S
                     if (result.isEmpty()) {
                         launchSnackbar(RESTORE_COUNT_MSG(restoreDirCount))
                     } else {
-                        val count = result.parMap {
+                        // For items where API returned nothing (deleted galleries),
+                        // fill metadata from local ComicInfo.xml
+                        result.forEach { item ->
+                            if (item.pages == 0) {
+                                val dir = downloadLocation / item.dirname
+                                dir.find(COMIC_INFO_FILE)?.let { readComicInfo(it) }?.let { comicInfo ->
+                                    item.galleryInfo.title = comicInfo.series
+                                    item.galleryInfo.titleJpn = comicInfo.alternateSeries
+                                    item.galleryInfo.pages = comicInfo.pageCount
+                                    item.galleryInfo.simpleTags = comicInfo.toSimpleTags()
+                                    item.galleryInfo.simpleLanguage = comicInfo.languageISO
+                                    comicInfo.communityRating?.toFloatOrNull()?.let { item.galleryInfo.rating = it }
+                                }
+                            }
+                        }
+                        val count = result.count {
                             if (it.pages != 0) {
                                 EhDB.putDownloadDirname(it.gid, it.dirname)
                                 DownloadManager.restoreDownload(it.galleryInfo, it.dirname)
                                 SpiderDen(it.galleryInfo, it.dirname).writeComicInfo(false)
+                                true
+                            } else {
+                                false
                             }
-                        }.size
+                        }
                         launchSnackbar(RESTORE_COUNT_MSG(count + restoreDirCount))
                     }
                 }.onFailure {

@@ -10,7 +10,14 @@
       "Bash(./gradlew:*)",
       "Bash(git remote add:*)",
       "Bash(git fetch:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(where:*)",
+      "Bash(java:*)",
+      "Bash(dir:*)",
+      "Bash(dir \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\")",
+      "Bash(set JAVA_HOME=C:Program FilesAndroidAndroid Studiojbr)",
+      "Bash(cmd /c \"set JAVA_HOME=C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr&& gradlew.bat assembleDebug\")",
+      "Bash(export JAVA_HOME=\"/c/Program Files/Android/Android Studio/jbr\")"
     ]
   }
 }
