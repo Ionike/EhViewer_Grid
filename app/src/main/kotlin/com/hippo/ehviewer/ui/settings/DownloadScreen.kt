@@ -253,7 +253,26 @@ fun AnimatedVisibilityScope.DownloadScreen(navigator: DestinationsNavigator) = S
                 summary = stringResource(id = R.string.settings_download_restore_download_items_summary),
             ) {
                 var restoreDirCount = 0
-                suspend fun getRestoreItem(file: Path): RestoreItem? {
+                suspend fun findGalleryDirs(dir: Path, prefix: String = ""): List<Pair<Path, String>> {
+                    return dir.list().filter { it.isDirectory }.flatMap { file ->
+                        val dirname = if (prefix.isEmpty()) file.name else "$prefix/${file.name}"
+                        val hasValidMetadata = file.find(SPIDER_INFO_FILENAME)?.let {
+                            readCompatFromPath(it)?.run {
+                                GalleryDetailUrlParser.Result(gid, token)
+                            }
+                        } ?: file.find(COMIC_INFO_FILE)?.let {
+                            readComicInfo(it)?.run {
+                                GalleryDetailUrlParser.parse(web)
+                            }
+                        }
+                        if (hasValidMetadata != null) {
+                            listOf(file to dirname)
+                        } else {
+                            findGalleryDirs(file, dirname)
+                        }
+                    }
+                }
+                suspend fun getRestoreItem(file: Path, dirname: String): RestoreItem? {
                     if (!file.isDirectory) return null
                     return runSuspendCatching {
                         val (gid, token) = file.find(SPIDER_INFO_FILENAME)?.let {
@@ -265,7 +284,6 @@ fun AnimatedVisibilityScope.DownloadScreen(navigator: DestinationsNavigator) = S
                                 GalleryDetailUrlParser.parse(web)
                             }
                         } ?: return null
-                        val dirname = file.name
                         if (DownloadManager.containDownloadInfo(gid)) {
                             // Restore download dir to avoid redownload
                             val dbdirname = EhDB.getDownloadDirname(gid)
@@ -281,7 +299,8 @@ fun AnimatedVisibilityScope.DownloadScreen(navigator: DestinationsNavigator) = S
                     }.getOrNull()
                 }
                 runSuspendCatching {
-                    val result = downloadLocation.list().parMapNotNull { getRestoreItem(it) }.also {
+                    val galleryDirs = findGalleryDirs(downloadLocation)
+                    val result = galleryDirs.parMapNotNull { (file, dirname) -> getRestoreItem(file, dirname) }.also {
                         fillGalleryListByApi(it, EhUrl.referer)
                     }
                     if (result.isEmpty()) {
