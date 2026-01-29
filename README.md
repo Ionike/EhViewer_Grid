@@ -9,7 +9,8 @@ My modification of EhViewer Kotlin with new features, UI and bug fix.
 *for my own use. not maintained
 
 # What's different:
-Manage and read local galleries along with EhViewer downloaded galleries, with folder tree and search function(Local gallery must be stored as .cbz file)  
+Manage and read local galleries along with EhViewer downloaded galleries, with folder tree(Local galleries THAT ARE NOT ON EH(Has no ComicInfo.xml or no Exhentai/Ehentai link present in ComicInfo.xml)must be stored as .cbz file)  
+A search feature that could parse ComicInfo.xml even with non-Eh galleries
 Mesh grided thumbnail view with titles  
 Enhanced horizontal gallery thumbnail view  
 Selection in download in thumbnail view  
@@ -31,7 +32,7 @@ Device UI optimization(for my y700gen4 lol)
 </p>
 
 # What's next
-Local gallery DB
-Support of other sites   
-Optimize for more devices  
+Local gallery DB - done
+Support of other sites - Hard to implement due to og app structure. I suggest use other apps to download and manually .cbz it.
+Test 
 
