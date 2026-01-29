@@ -129,8 +129,14 @@ private fun classifyFile(file: Path): LocalFileInfo? {
                 // First try to extract GID from folder name
                 val gid = extractGidFromName(name)
                 gid?.let { DownloadManager.getDownloadInfo(it) }
-                    // Fallback: search by dirname match
-                    ?: DownloadManager.downloadInfoList.find { it.dirname == name }
+                    // Fallback: search by dirname match (supports nested paths)
+                    ?: run {
+                        val relativePath = file.toString()
+                            .removePrefix(downloadLocation.toString())
+                            .trimStart('/', '\\')
+                            .replace('\\', '/')
+                        DownloadManager.downloadInfoList.find { it.dirname == relativePath }
+                    }
             } else {
                 null
             }
