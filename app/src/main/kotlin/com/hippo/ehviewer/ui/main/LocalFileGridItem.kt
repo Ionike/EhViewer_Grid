@@ -17,6 +17,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,7 +29,9 @@ import com.ehviewer.core.ui.component.ElevatedCard
 import com.ehviewer.core.ui.util.TransitionsVisibilityScope
 import com.ehviewer.core.ui.util.listThumbGenerator
 import com.hippo.ehviewer.EhDB
+import com.hippo.ehviewer.Settings
 import com.hippo.ehviewer.client.EhUtils
+import com.hippo.ehviewer.collectAsState
 import com.hippo.ehviewer.local.LocalFileInfo
 
 @Composable
@@ -70,6 +73,23 @@ fun LocalFileGridItem(
                         contentScale = ContentScale.Fit,
                     )
                 }
+                is LocalFileInfo.MetadataArchive -> {
+                    AsyncImage(
+                        model = item,
+                        contentDescription = null,
+                        modifier = Modifier.aspectRatio(DEFAULT_RATIO),
+                        contentScale = ContentScale.Fit,
+                    )
+                    if (item.comicInfo.pageCount > 0) {
+                        Badge(
+                            modifier = Modifier.align(Alignment.TopEnd).widthIn(min = 32.dp).height(24.dp),
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        ) {
+                            Text(text = "${item.comicInfo.pageCount}")
+                        }
+                    }
+                }
                 is LocalFileInfo.KnownGallery -> {
                     val info = item.galleryInfo
                     val isHorizontal = info.thumbWidth > info.thumbHeight
@@ -98,8 +118,20 @@ fun LocalFileGridItem(
                 }
             }
         }
+        val showJpnTitle by Settings.showJpnTitle.collectAsState()
+        val displayTitle = when (item) {
+            is LocalFileInfo.MetadataArchive -> {
+                val comicInfo = item.comicInfo
+                if (showJpnTitle) {
+                    comicInfo.alternateSeries?.takeIf { it.isNotBlank() } ?: comicInfo.series ?: item.name
+                } else {
+                    comicInfo.series?.takeIf { it.isNotBlank() } ?: comicInfo.alternateSeries ?: item.name
+                }
+            }
+            else -> item.name
+        }
         Text(
-            text = item.name,
+            text = displayTitle,
             maxLines = 3,
             overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.bodyMedium,

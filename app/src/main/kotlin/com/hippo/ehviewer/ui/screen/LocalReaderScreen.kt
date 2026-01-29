@@ -66,6 +66,8 @@ import com.hippo.ehviewer.collectAsState
 import com.hippo.ehviewer.download.DownloadManager
 import com.hippo.ehviewer.download.downloadLocation
 import com.hippo.ehviewer.local.LocalFileInfo
+import com.hippo.ehviewer.spider.COMIC_INFO_FILE
+import com.hippo.ehviewer.spider.ComicInfo
 import com.hippo.ehviewer.ui.DrawerHandle
 import com.hippo.ehviewer.ui.Screen
 import com.hippo.ehviewer.ui.main.LocalFileGridItem
@@ -76,8 +78,10 @@ import com.hippo.ehviewer.ui.tools.awaitSelectItem
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import java.util.zip.ZipFile
 import kotlin.math.roundToInt
 import moe.tarsin.navigate
+import nl.adaptivity.xmlutil.serialization.XML
 import okio.Path
 import okio.Path.Companion.toPath
 
@@ -115,6 +119,21 @@ private enum class LocalSortMode {
     DateModifiedDesc,
 }
 
+private val comicInfoXml = XML {
+    recommended {
+        ignoreUnknownChildren()
+    }
+}
+
+private fun readComicInfoFromArchive(file: Path): ComicInfo? = runCatching {
+    ZipFile(file.toFile()).use { zip ->
+        val entry = zip.getEntry(COMIC_INFO_FILE) ?: return@use null
+        zip.getInputStream(entry).use { stream ->
+            comicInfoXml.decodeFromString(ComicInfo.serializer(), stream.reader().readText())
+        }
+    }
+}.getOrNull()
+
 private fun classifyFile(file: Path): LocalFileInfo? {
     val name = file.name
     val lowerName = name.lowercase()
@@ -122,7 +141,13 @@ private fun classifyFile(file: Path): LocalFileInfo? {
     return when {
         ARCHIVE_EXTENSIONS.any { lowerName.endsWith(it) } -> {
             val gid = extractGidFromName(name)
-            LocalFileInfo.Archive(file, name, lastModified, gid)
+            // Try to read ComicInfo.xml from archive
+            val comicInfo = readComicInfoFromArchive(file)
+            if (comicInfo != null) {
+                LocalFileInfo.MetadataArchive(file, name, lastModified, comicInfo)
+            } else {
+                LocalFileInfo.Archive(file, name, lastModified, gid)
+            }
         }
         file.isDirectory -> {
             val downloadInfo = if (DownloadManager.isInitialized) {
@@ -159,7 +184,8 @@ private suspend fun loadFiles(path: Path, sortMode: LocalSortMode): List<LocalFi
                     when (it) {
                         is LocalFileInfo.Folder -> 0
                         is LocalFileInfo.KnownGallery -> 1
-                        is LocalFileInfo.Archive -> 2
+                        is LocalFileInfo.MetadataArchive -> 2
+                        is LocalFileInfo.Archive -> 3
                     }
                 }.then(
                     when (sortMode) {
@@ -221,7 +247,22 @@ fun AnimatedVisibilityScope.LocalReaderScreen(navigator: DestinationsNavigator) 
         if (keyword.isEmpty()) {
             files.addAll(loaded)
         } else {
-            files.addAll(loaded.filter { it.name.contains(keyword, ignoreCase = true) })
+            files.addAll(loaded.filter { item ->
+                when (item) {
+                    is LocalFileInfo.MetadataArchive -> {
+                        val comicInfo = item.comicInfo
+                        item.name.contains(keyword, ignoreCase = true) ||
+                            comicInfo.series?.contains(keyword, ignoreCase = true) == true ||
+                            comicInfo.alternateSeries?.contains(keyword, ignoreCase = true) == true ||
+                            comicInfo.writer?.any { it.contains(keyword, ignoreCase = true) } == true ||
+                            comicInfo.penciller?.any { it.contains(keyword, ignoreCase = true) } == true ||
+                            comicInfo.characters?.any { it.contains(keyword, ignoreCase = true) } == true ||
+                            comicInfo.teams?.any { it.contains(keyword, ignoreCase = true) } == true ||
+                            comicInfo.genre?.any { it.contains(keyword, ignoreCase = true) } == true
+                    }
+                    else -> item.name.contains(keyword, ignoreCase = true)
+                }
+            })
         }
     }
 
@@ -241,7 +282,7 @@ fun AnimatedVisibilityScope.LocalReaderScreen(navigator: DestinationsNavigator) 
                     pathStack.add(currentPath)
                     currentPath = item.path.toString()
                 }
-                is LocalFileInfo.Archive -> {
+                is LocalFileInfo.Archive, is LocalFileInfo.MetadataArchive -> {
                     navToReader(item.path.toString())
                 }
                 is LocalFileInfo.KnownGallery -> {

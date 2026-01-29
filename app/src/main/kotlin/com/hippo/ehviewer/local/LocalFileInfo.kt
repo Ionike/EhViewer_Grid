@@ -1,6 +1,7 @@
 package com.hippo.ehviewer.local
 
 import com.ehviewer.core.model.BaseGalleryInfo
+import com.hippo.ehviewer.spider.ComicInfo
 import okio.Path
 
 sealed class LocalFileInfo {
@@ -19,6 +20,13 @@ sealed class LocalFileInfo {
         override val name: String,
         override val lastModified: Long = 0,
         val gid: Long? = null,
+    ) : LocalFileInfo()
+
+    data class MetadataArchive(
+        override val path: Path,
+        override val name: String,
+        override val lastModified: Long = 0,
+        val comicInfo: ComicInfo,
     ) : LocalFileInfo()
 
     data class KnownGallery(

@@ -57,6 +57,7 @@ import com.hippo.ehviewer.coil.HardwareBitmapInterceptor
 import com.hippo.ehviewer.coil.LocalArchiveThumbFetcher
 import com.hippo.ehviewer.coil.MapExtraInfoInterceptor
 import com.hippo.ehviewer.coil.MergeInterceptor
+import com.hippo.ehviewer.coil.MetadataArchiveThumbFetcher
 import com.hippo.ehviewer.coil.QrCodeInterceptor
 import com.hippo.ehviewer.dailycheck.checkDawn
 import com.hippo.ehviewer.download.DownloadManager
@@ -179,6 +180,7 @@ class EhApplication : Application(), SingletonImageLoader.Factory {
                 ),
             )
             add(LocalArchiveThumbFetcher.Factory())
+            add(MetadataArchiveThumbFetcher.Factory())
             add(MergeInterceptor)
             add(DownloadThumbInterceptor)
             if (isAtLeastO) {
