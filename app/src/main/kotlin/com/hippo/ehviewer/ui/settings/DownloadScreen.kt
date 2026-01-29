@@ -310,6 +310,7 @@ fun AnimatedVisibilityScope.DownloadScreen(navigator: DestinationsNavigator) = S
                     } else {
                         // For items where API returned nothing (deleted galleries),
                         // fill metadata from local ComicInfo.xml
+                        val imageFileRegex = Regex("^\\d{8}\\.\\w{3,4}$")
                         result.forEach { item ->
                             if (item.pages == 0) {
                                 val dir = downloadLocation / item.dirname
@@ -320,6 +321,13 @@ fun AnimatedVisibilityScope.DownloadScreen(navigator: DestinationsNavigator) = S
                                     item.galleryInfo.simpleTags = comicInfo.toSimpleTags()
                                     item.galleryInfo.simpleLanguage = comicInfo.languageISO
                                     comicInfo.communityRating?.toFloatOrNull()?.let { item.galleryInfo.rating = it }
+                                }
+                                // If pageCount is still 0, count actual image files in directory
+                                if (item.galleryInfo.pages == 0) {
+                                    val imageCount = dir.list().count { it.name.matches(imageFileRegex) }
+                                    if (imageCount > 0) {
+                                        item.galleryInfo.pages = imageCount
+                                    }
                                 }
                             }
                         }
