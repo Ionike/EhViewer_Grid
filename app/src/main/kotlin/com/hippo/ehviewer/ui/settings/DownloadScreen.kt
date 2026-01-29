@@ -31,6 +31,7 @@ import arrow.fx.coroutines.parMap
 import arrow.fx.coroutines.parMapNotNull
 import com.ehviewer.core.database.model.DownloadInfo
 import com.ehviewer.core.files.delete
+import com.ehviewer.core.files.exists
 import com.ehviewer.core.files.find
 import com.ehviewer.core.files.isDirectory
 import com.ehviewer.core.files.list
@@ -339,6 +340,23 @@ fun AnimatedVisibilityScope.DownloadScreen(navigator: DestinationsNavigator) = S
                     launchSnackbar(restoreFailed)
                 }
             }
+            WorkPreference(
+                title = stringResource(id = R.string.settings_download_clean_stale_entries),
+                summary = stringResource(id = R.string.settings_download_clean_stale_entries_summary),
+            ) {
+                val staleEntries = DownloadManager.downloadInfoList.filter { info ->
+                    val dir = info.dirname?.let { downloadLocation / it }
+                    dir == null || !dir.exists()
+                }
+                if (staleEntries.isEmpty()) {
+                    launchSnackbar(STALE_ENTRIES_NONE)
+                } else {
+                    staleEntries.forEach { info ->
+                        DownloadManager.deleteDownload(info.gid, deleteFiles = false)
+                    }
+                    launchSnackbar(STALE_ENTRIES_DONE(staleEntries.size))
+                }
+            }
             // WorkPreference(
             //     title = stringResource(id = R.string.settings_download_clean_redundancy),
             //     summary = stringResource(id = R.string.settings_download_clean_redundancy_summary),
@@ -377,6 +395,8 @@ private class RestoreItem(
 ) : GalleryInfo by galleryInfo
 private val RESTORE_NOT_FOUND = appCtx.getString(R.string.settings_download_restore_not_found)
 private val RESTORE_COUNT_MSG = { cnt: Int -> if (cnt == 0) RESTORE_NOT_FOUND else appCtx.getString(R.string.settings_download_restore_successfully, cnt) }
+private val STALE_ENTRIES_NONE = appCtx.getString(R.string.settings_download_clean_stale_entries_none)
+private val STALE_ENTRIES_DONE = { cnt: Int -> appCtx.getString(R.string.settings_download_clean_stale_entries_done, cnt) }
 // private val NO_REDUNDANCY = appCtx.getString(R.string.settings_download_clean_redundancy_no_redundancy)
 // private val CLEAR_REDUNDANCY_DONE = { cnt: Int -> appCtx.getString(R.string.settings_download_clean_redundancy_done, cnt) }
 // private val FINAL_CLEAR_REDUNDANCY_MSG = { cnt: Int -> if (cnt == 0) NO_REDUNDANCY else CLEAR_REDUNDANCY_DONE(cnt) }

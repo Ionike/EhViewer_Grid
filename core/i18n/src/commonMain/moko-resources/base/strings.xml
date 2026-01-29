@@ -367,6 +367,10 @@
     <string name="settings_download_clean_redundancy_summary">Remove gallery images which are not in download list but in download location</string>
     <string name="settings_download_clean_redundancy_no_redundancy">No redundancy</string>
     <string name="settings_download_clean_redundancy_done">Redundancy cleaning completed, clean-up %d items totally</string>
+    <string name="settings_download_clean_stale_entries">Clean stale database entries</string>
+    <string name="settings_download_clean_stale_entries_summary">Remove downloads from database whose folders no longer exist</string>
+    <string name="settings_download_clean_stale_entries_none">No stale entries found</string>
+    <string name="settings_download_clean_stale_entries_done">Removed %d stale entries from database</string>
     <string name="settings_advanced">Advanced</string>
     <string name="settings_advanced_save_parse_error_body">Save HTML content when parsing error</string>
     <string name="settings_advanced_save_parse_error_body_summary">Html content may be privacy-sensitive</string>
