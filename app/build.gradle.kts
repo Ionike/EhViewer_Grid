@@ -50,7 +50,7 @@ android {
     val snapshot = !hasProperty("release")
 
     defaultConfig {
-        applicationId = "moe.tarsin.ehviewer"
+        applicationId = "megu.grid.ehviewer"
         versionCode = 1
         versionName = if (snapshot) {
             "1.0.0-SNAPSHOT"
