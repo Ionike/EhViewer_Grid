@@ -8,9 +8,9 @@ build
 .idea
 .vscode
 /captures
-.claude
-/.claude
-.apk
-.idsig
+.claude/
+*.apk
+*.idsig
+*.dm
 /key0
 /app/build/outputs/apk/release/

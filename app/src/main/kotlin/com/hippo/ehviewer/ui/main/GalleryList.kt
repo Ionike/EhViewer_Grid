@@ -28,7 +28,6 @@ import androidx.compose.material3.pulltorefresh.pullToRefresh
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -145,17 +144,23 @@ fun GalleryList(
             val thumbColumns = maxOf(2, thumbColumnsState)
 
             val snapshot = data.itemSnapshotList
-            val denseMapping by remember(snapshot, thumbColumns) {
-                derivedStateOf {
-                    val items = snapshot.items
-                    val indices = reorderDense(items, thumbColumns) { info ->
-                        val isHorizontal = info.thumbWidth > info.thumbHeight
-                        if (isHorizontal) 2 else 1
-                    }
-                    indices
+            val denseMapping = remember(snapshot, thumbColumns) {
+                reorderDense(snapshot.items, thumbColumns) { info ->
+                    val isHorizontal = info.thumbWidth > info.thumbHeight
+                    if (isHorizontal) 2 else 1
                 }
             }
             val offset = snapshot.placeholdersBefore
+            val itemCount = offset + denseMapping.size + snapshot.placeholdersAfter
+
+            fun resolveIndex(index: Int): Int {
+                val localIndex = index - offset
+                return if (localIndex in denseMapping.indices) {
+                    offset + denseMapping[localIndex]
+                } else {
+                    index
+                }
+            }
 
             FastScrollLazyVerticalGrid(
                 columns = GridCells.Fixed(thumbColumns),
@@ -166,33 +171,21 @@ fun GalleryList(
                 horizontalArrangement = Arrangement.spacedBy(gridInterval),
             ) {
                 items(
-                    count = data.itemCount,
+                    count = itemCount,
                     key = { index ->
-                        val realIndex = if (index < offset || index >= offset + denseMapping.size) {
-                            index
-                        } else {
-                            offset + denseMapping[index - offset]
-                        }
+                        val realIndex = resolveIndex(index)
                         val item = data[realIndex]
                         item?.gid ?: realIndex
                     },
                     contentType = data.itemContentType(),
                     span = { index ->
-                        val realIndex = if (index < offset || index >= offset + denseMapping.size) {
-                            index
-                        } else {
-                            offset + denseMapping[index - offset]
-                        }
+                        val realIndex = resolveIndex(index)
                         val info = data[realIndex]
                         val isHorizontal = info != null && info.thumbWidth > info.thumbHeight
                         if (isHorizontal) GridItemSpan(2) else GridItemSpan(1)
                     },
                 ) { index ->
-                    val realIndex = if (index < offset || index >= offset + denseMapping.size) {
-                        index
-                    } else {
-                        offset + denseMapping[index - offset]
-                    }
+                    val realIndex = resolveIndex(index)
                     val info = data[realIndex]
                     if (info != null) {
                         thumbItemContent(info)
