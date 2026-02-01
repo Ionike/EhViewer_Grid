@@ -174,19 +174,19 @@ fun GalleryList(
                     count = itemCount,
                     key = { index ->
                         val realIndex = resolveIndex(index)
-                        val item = data[realIndex]
+                        val item = if (realIndex < data.itemCount) data[realIndex] else null
                         item?.gid ?: realIndex
                     },
                     contentType = data.itemContentType(),
                     span = { index ->
                         val realIndex = resolveIndex(index)
-                        val info = data[realIndex]
+                        val info = if (realIndex < data.itemCount) data[realIndex] else null
                         val isHorizontal = info != null && info.thumbWidth > info.thumbHeight
                         if (isHorizontal) GridItemSpan(2) else GridItemSpan(1)
                     },
                 ) { index ->
                     val realIndex = resolveIndex(index)
-                    val info = data[realIndex]
+                    val info = if (realIndex < data.itemCount) data[realIndex] else null
                     if (info != null) {
                         thumbItemContent(info)
                         PrefetchAround(data, realIndex, 10) { imageRequest(it) }
