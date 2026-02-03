@@ -21,8 +21,8 @@ import kotlin.concurrent.read
 import kotlin.concurrent.write
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -32,7 +32,6 @@ import moe.tarsin.coroutines.NamedMutex
 import moe.tarsin.coroutines.withLock
 import okio.Path
 
-private val progressScope = CoroutineScope(Dispatchers.IO)
 private const val MAX_CACHE_SIZE = 512 * 1024 * 1024
 private const val MIN_CACHE_SIZE = 256 * 1024 * 1024
 
@@ -113,7 +112,7 @@ abstract class PageLoader(val scope: CoroutineScope, val info: GalleryInfo?, sta
     override fun close() {
         lock.write { cache.evictAll() }
         info?.run {
-            progressScope.launch {
+            runBlocking {
                 EhDB.putReadProgress(gid, startPage)
             }
         }
