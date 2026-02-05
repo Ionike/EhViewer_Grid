@@ -174,8 +174,8 @@ fun AnimatedVisibilityScope.GalleryListScreen(
     var category by rememberMutableStateInDataStore("SearchCategory") { EhUtils.ALL_CATEGORY }
     var advancedSearchOption by rememberMutableStateInDataStore("AdvancedSearchOption") { AdvancedSearchOption() }
 
-    var recordedGalleryGid by rememberSaveable { mutableStateOf<Long?>(null) }
-    var recordedTime by rememberSaveable { mutableStateOf<Long?>(null) }
+    var recordedGalleryGid by rememberMutableStateInDataStore("RecordedGalleryGid") { null as Long? }
+    var recordedTime by rememberMutableStateInDataStore("RecordedTime") { null as Long? }
 
     DrawerHandle(!searchBarExpanded)
 
