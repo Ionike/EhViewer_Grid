@@ -51,11 +51,11 @@ android {
 
     defaultConfig {
         applicationId = "megu.grid.ehviewer"
-        versionCode = 3
+        versionCode = 4
         versionName = if (snapshot) {
-            "1.03-SNAPSHOT"
+            "1.04-SNAPSHOT"
         } else {
-            "1.03"
+            "1.04"
         }
         buildConfigField("boolean", "SNAPSHOT", "$snapshot")
         buildConfigField("String", "RAW_VERSION_NAME", "\"$versionName\"")

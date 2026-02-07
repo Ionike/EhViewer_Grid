@@ -1,6 +1,7 @@
 package com.ehviewer.core.ui.component
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -10,8 +11,6 @@ import androidx.compose.foundation.scrollbar.rememberScrollbarAdapter
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.unit.IntOffset
 
 @Composable
 fun FastScrollLazyColumn(
@@ -24,7 +23,7 @@ fun FastScrollLazyColumn(
     userScrollEnabled: Boolean = true,
     content: LazyListScope.() -> Unit,
 ) {
-    Layout({
+    Box {
         LazyColumn(
             modifier = modifier,
             state = state,
@@ -38,13 +37,9 @@ fun FastScrollLazyColumn(
         VerticalScrollbar(
             adapter = rememberScrollbarAdapter(state),
             isScrollInProgress = state.isScrollInProgress,
+            modifier = Modifier.align(Alignment.TopEnd),
             contentPadding = contentPadding,
+            reverseLayout = reverseLayout,
         )
-    }) { measurables, constraints ->
-        val (column, scrollbar) = measurables.map { it.measure(constraints) }
-        layout(column.width, column.height) {
-            column.place(IntOffset.Zero)
-            scrollbar.placeRelative(column.width - scrollbar.width, 0)
-        }
     }
 }
